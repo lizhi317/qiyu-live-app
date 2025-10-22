@@ -1,8 +1,11 @@
 package org.qiyu.live.user.provider.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Resource;
 import org.apache.catalina.User;
+import org.apache.rocketmq.client.producer.MQProducer;
+import org.apache.rocketmq.common.message.Message;
 import org.idea.qiyu.live.framework.redis.starter.key.UserProviderCacheKeyBuilder;
 import org.qiyu.live.common.interfaces.ConvertBeanUtils;
 import org.qiyu.live.user.dto.UserDTO;
@@ -44,6 +47,10 @@ public class UserServiceImpl implements IUserService {
     @Resource
     private UserProviderCacheKeyBuilder userProviderCacheKeyBuilder;
 
+    @Resource
+    private MQProducer mqProducer;
+
+
     @Override
     public UserDTO getByUserId(Long userId) {
         if (userId == null) {
@@ -70,6 +77,21 @@ public class UserServiceImpl implements IUserService {
             return false;
         }
         userMapper.updateById(ConvertBeanUtils.convert(userDTO, UserPO.class));
+        // 删除缓存
+        String key = userProviderCacheKeyBuilder.buildUserInfoKey(userDTO.getUserId());
+        redisTemplate.delete(key);
+
+        //
+        try {
+            Message message = new Message();
+            message.setBody(JSON.toJSONString(userDTO).getBytes());
+            message.setTopic("user-update-cache");
+            // 设置延迟级别，1代表延迟1秒发送
+            message.setDelayTimeLevel(1);
+            mqProducer.send(message);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
         return true;
     }
 

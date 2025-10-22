@@ -18,9 +18,7 @@ import java.sql.Connection;
  */
 @Configuration
 public class ShardingJdbcDatasourceAutoInitConnectionConfig {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(ShardingJdbcDatasourceAutoInitConnectionConfig.class);
-
     @Bean
     public ApplicationRunner runner(DataSource dataSource) {
         return args -> {
@@ -29,5 +27,4 @@ public class ShardingJdbcDatasourceAutoInitConnectionConfig {
             Connection connection = dataSource.getConnection();
         };
     }
-
 }
